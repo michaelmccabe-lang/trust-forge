@@ -1,0 +1,754 @@
+<title>Trust Forge Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;600&family=Schibsted+Grotesk:wght@400;500;600;700&family=Sora:wght@500;600&display=swap">
+<style>
+/* Layout: one-screen app. Dark CT canvas, three light stage panels (raw grey, AI pink dashed, final white) aligned row by row. Single committed dark look. */
+:root{
+  color-scheme: dark;
+  --ct-dark:#150305; --ct-surface:#1F0A0D; --ct-line:#2A1316; --ct-line-2:#4A2A2E; --ct-muted:#D2B8BB;
+  --red:#FC192E; --red-deep:#AB0010; --red-ink:#B0000D; --red-soft:#FF94A0;
+  --raw:#F7F6F6; --ai:#FFF1F2; --fin:#FFFFFF; --ink:#150305; --ink-2:#4E3F41; --ink-3:#6E6466; --hair:#E1DCDC; --edge:#D3CFCF;
+  --ok:#3E8E48; --ok-ink:#1F6B2A; --ok-bg:#DFF0E1; --warn:#D98700; --warn-ink:#8A5200; --warn-bg:#FFF4DE; --del-bg:#FDE1E4;
+  --f-display:"Sora","Schibsted Grotesk",system-ui,sans-serif;
+  --f-body:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"Azeret Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+html,body{height:100%}
+body{background:var(--ct-dark);color:#fff;font-family:var(--f-body);font-size:14px}
+*{box-sizing:border-box}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.app{height:100%;display:flex;flex-direction:column}
+.wrap{max-width:1440px;margin:0 auto;width:100%}
+
+/* prototype bar */
+.proto{flex:none;background:#0B0102;border-bottom:1px solid var(--ct-line);padding-block:6px}
+.proto .wrap{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.proto b{font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;color:var(--red-soft);text-transform:uppercase;margin-right:6px}
+.pbtn{border:1px solid var(--ct-line-2);background:transparent;color:var(--ct-muted);border-radius:999px;padding:4px 11px;font-size:12px}
+.pbtn.on{background:#fff;color:var(--ink);border-color:#fff;font-weight:600}
+
+/* app header */
+.top{flex:none;border-bottom:1px solid var(--ct-line);padding-block:8px}
+.top .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
+.logo{font-family:var(--f-display);font-weight:600;font-size:18px;letter-spacing:-.01em}
+.logo i{color:var(--red);font-style:normal}
+.nav{display:flex;flex-wrap:wrap;flex:1 1 300px}
+.nav span{padding:8px 12px;color:var(--ct-muted);font-size:13px}
+.nav span.on{color:#fff;font-weight:600;box-shadow:inset 0 -2px 0 var(--red)}
+.tabs{display:flex;border:1px solid var(--ct-line-2);border-radius:4px;overflow:hidden}
+.tabs button{border:0;background:transparent;color:var(--ct-muted);padding:6px 12px;font-size:12px}
+.tabs button+button{border-left:1px solid var(--ct-line-2)}
+.tabs button.on{background:rgba(252,25,46,.18);color:#fff;font-weight:600}
+.badge{font-family:var(--f-mono);font-size:10px;letter-spacing:.04em;border:1px solid var(--red);color:#fff;background:rgba(252,25,46,.18);border-radius:999px;padding:3px 10px;white-space:nowrap}
+
+/* steps */
+.steps{flex:none;padding-block:10px 0}
+.steps .wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.stp{display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;border:1px solid var(--ct-line-2);background:transparent;color:var(--ct-muted);font-size:12px}
+.stp.on{background:#fff;border-color:#fff;color:var(--ink);font-weight:600}
+.stp .n{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:10px;border:1px solid #6E5557}
+.stp.on .n{background:var(--red);border-color:var(--red);color:#fff}
+.stp.done .n{background:var(--ok);border-color:var(--ok);color:#fff}
+.stp-line{width:32px;height:1px;background:var(--ct-line-2)}
+.steps .note{font-size:12px;color:var(--ct-muted)}
+
+main{flex:1;min-height:0;overflow-y:auto}
+.main-in{padding-block:12px 16px}
+.bar{flex:none;border-top:1px solid var(--ct-line);padding-block:10px;padding-bottom:max(10px,env(safe-area-inset-bottom,0px))}
+.bar .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.bar p{margin:0;font-size:12px;color:var(--ct-muted);flex:1 1 280px}
+.paybox{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;color:var(--ink);border-radius:8px;padding:8px 10px 8px 14px}
+
+/* buttons */
+.btn{border-radius:4px;font-weight:600;font-size:13px;min-height:40px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #C9C3C4;background:#fff;color:var(--ink);white-space:nowrap}
+.btn.pri{background:linear-gradient(180deg,var(--red-deep),var(--red));border-color:var(--red-ink);color:#fff}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.ghost{background:transparent;color:#fff;border-color:var(--ct-line-2)}
+.btn.ghost-red{background:transparent;color:var(--red-soft);border-color:var(--red-soft)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.acc,.den{font-weight:600;font-size:11px;border-radius:4px;padding:0 8px;min-height:26px;display:inline-flex;align-items:center;gap:4px}
+.acc{border:1px solid var(--ok);background:var(--ok);color:#fff}
+.den{border:1px solid var(--red-ink);background:#fff;color:var(--red-ink)}
+.acc.off{background:#fff;color:var(--ok-ink)}
+.den.on{background:var(--red-ink);color:#fff}
+
+/* text bits */
+.lbl{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.tx{font-size:12px;color:var(--ink-2);line-height:1.4;margin:0}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 9px;font-family:var(--f-mono);font-size:10px;letter-spacing:.03em;border:1px solid #C9C3C4;color:#4E494A;background:#fff;white-space:nowrap}
+.pill.on{border-color:#C8000F;color:#8A000B;background:#FDE6E8}
+button.pill{min-height:28px}
+button.pill.bad{border-color:var(--red-ink);color:#fff;background:var(--red-ink)}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+.dot.g{background:var(--ok)}.dot.a{background:var(--warn)}.dot.r{background:#C8000F}
+del{color:var(--red-ink);background:var(--del-bg);text-decoration:line-through;text-decoration-color:#C8000F;text-decoration-thickness:2px}
+ins{color:var(--ok-ink);background:var(--ok-bg);text-decoration:underline;text-decoration-color:var(--ok);text-underline-offset:2px}
+.field,.trk{background:#fff;border:1px solid #BDB6B7;border-radius:4px;padding:6px 9px;color:var(--ink);font-size:13.5px;line-height:1.4;width:100%;margin:0}
+textarea.field{resize:vertical}
+.warnr{margin:0;font-size:11.5px;color:#8A000B;background:var(--del-bg);border-radius:4px;padding:4px 7px;line-height:1.35}
+
+/* three-stage grid */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 26px minmax(0,1.1fr) 26px minmax(0,1fr);color:var(--ink)}
+.c{padding:9px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.c1{background:var(--raw);border-left:1px solid var(--edge);border-right:1px solid var(--edge);border-bottom:1px solid var(--hair)}
+.c2{background:var(--ai);border-left:1.5px dashed var(--red);border-right:1.5px dashed var(--red);border-bottom:1px solid #F4C7CC}
+.c3{background:var(--fin);border-left:2px solid var(--ink);border-right:2px solid var(--ink);border-bottom:1px solid #E7E3E3}
+.c1.hd{border-top:1px solid var(--edge);border-radius:10px 10px 0 0}
+.c2.hd{border-top:1.5px dashed var(--red);border-radius:10px 10px 0 0}
+.c3.hd{border-top:2px solid var(--ink);border-radius:10px 10px 0 0}
+.c1.ft{border-bottom:1px solid var(--edge);border-radius:0 0 10px 10px}
+.c2.ft{border-bottom:1.5px dashed var(--red);border-radius:0 0 10px 10px}
+.c3.ft{border-bottom:2px solid var(--ink);border-radius:0 0 10px 10px}
+.hd{flex-direction:row;align-items:center;gap:10px;padding:10px 14px}
+.ar{display:flex;align-items:center;justify-content:center;color:var(--red);font-family:var(--f-mono);font-size:13px}
+.hi{width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex:none}
+.ht{font-family:var(--f-display);font-weight:500;font-size:16px;margin:0;line-height:1.1}
+.hk{font-family:var(--f-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);display:block}
+.hs{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;margin-left:auto;color:#4E494A}
+.rh{min-height:28px;display:flex;align-items:center;gap:7px}
+.sn{font-family:var(--f-mono);font-size:10px;color:#C8000F;width:22px;flex:none}
+.st{font-family:var(--f-display);font-size:13px;font-weight:500;margin:0}
+.tag{display:flex;align-items:center;gap:7px;font-family:var(--f-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#4E494A}
+.tag.w{color:var(--warn-ink)}.tag.g{color:var(--ok-ink)}
+.ad{margin-left:auto;display:flex;gap:4px}
+.fl{font-family:var(--f-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.fv{font-size:13px;line-height:1.4;margin:0;color:var(--ink)}
+.kept{font-family:var(--f-mono);font-size:9px;letter-spacing:.06em;color:var(--warn-ink);background:var(--warn-bg);border-radius:3px;padding:2px 6px;align-self:flex-start}
+.pend{opacity:.55}
+
+/* time sum */
+.eq{display:flex;align-items:stretch;gap:3px}
+.tb{flex:1 1 0;min-width:0;border-radius:4px;padding:5px 7px;display:flex;flex-direction:column;gap:2px;background:#fff;border:1px solid #BDB6B7}
+.tb.soft{background:#FAF8F8;border-color:var(--hair)}
+.tb.res{border:1.5px solid var(--ink);background:#fff}
+.tb.bad{border-color:var(--red-ink)}
+.tbh{display:flex;align-items:center;gap:4px;font-family:var(--f-mono);font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap;overflow:hidden}
+.tbv{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;white-space:nowrap}
+.tbs{font-size:10.5px;color:var(--ink-3);line-height:1.3}
+.op{flex:0 0 14px;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:17px;font-weight:700;color:#C8000F}
+
+/* step 1 */
+.s1{display:flex;flex-wrap:wrap;gap:16px;align-items:stretch}
+.panel{background:var(--raw);border:1px solid var(--edge);border-radius:10px;color:var(--ink);display:flex;flex-direction:column;min-width:0}
+.panel.white{background:#fff}
+.ph{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--edge)}
+.row{padding:9px 16px;border-bottom:1px solid var(--hair);display:flex;flex-direction:column;gap:5px}
+.row:last-of-type{border-bottom:0}
+.pfoot{margin-top:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--edge);background:#fff;border-radius:0 0 10px 10px}
+.pfoot span{font-size:12px;color:var(--ink-2);flex:1 1 220px}
+.thumb{position:relative;flex:0 0 92px;height:64px;border-radius:5px;border:1px solid #BDB6B7;overflow:hidden;background:repeating-linear-gradient(0deg,rgba(255,255,255,.06) 0 1px,transparent 1px 3px),radial-gradient(80% 70% at 40% 40%,#7a2a30 0%,#2A1316 75%)}
+.thumb.sm{flex-basis:70px;height:48px}
+.thumb span.t{position:absolute;left:5px;bottom:3px;font-family:var(--f-mono);font-size:8px;color:#fff}
+.thumb .bl{position:absolute;width:12px;height:12px;border-radius:50%;background:rgba(237,236,236,.88);filter:blur(1px)}
+
+/* map */
+.map{position:relative;overflow:hidden;background-color:#EFEAE4;background-image:linear-gradient(#E4DDD5 1px,transparent 1px),linear-gradient(90deg,#E4DDD5 1px,transparent 1px);background-size:40px 40px}
+.map .road{position:absolute;box-sizing:border-box}
+.map .lab{position:absolute;font-family:var(--f-mono);font-size:9.5px;color:var(--ink-3);letter-spacing:.05em;white-space:nowrap}
+.mk{position:absolute;transform:rotate(45deg)}
+.num{position:absolute;width:16px;height:16px;border-radius:50%;background:var(--ink);color:#fff;font-family:var(--f-mono);font-size:9px;display:flex;align-items:center;justify-content:center}
+.mapctl{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:5px}
+.mapctl button{width:34px;height:34px;border-radius:4px;border:1px solid #BDB6B7;background:#fff;color:var(--ink);display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:15px}
+.legend{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 12px;padding:10px 14px;border-top:1px solid var(--hair)}
+.lg{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#2A1A1C}
+.lgi{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex:none}
+
+/* verifier */
+.stats{display:flex;flex-wrap:wrap;gap:8px}
+.stat{background:var(--ct-surface);border:1px solid var(--ct-line);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:4px;flex:1 1 130px}
+.stat .k{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ct-muted)}
+.stat .v{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:22px;line-height:1;color:#fff}
+.stat .s{font-family:var(--f-mono);font-size:10px;color:var(--ct-muted);display:flex;gap:8px;align-items:center}
+.lvls{display:flex;gap:6px;align-items:flex-end;height:46px}
+.lvls div{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:var(--f-mono);font-size:9.5px;color:#fff}
+.lvls i{display:block;width:100%;border-radius:2px 2px 0 0}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{border:1px solid var(--ct-line-2);background:transparent;color:var(--ct-muted);border-radius:999px;padding:4px 10px;font-family:var(--f-mono);font-size:10px}
+.chip.on{border-color:var(--red);color:#fff;background:rgba(252,25,46,.18)}
+.queue{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.q{flex:0 0 200px;text-align:left;display:flex;flex-direction:column;gap:4px;padding:8px 11px;border-radius:8px;background:#fff;border:1px solid var(--edge);color:var(--ink)}
+.q.on{border:2px solid var(--red);background:#FDE6E8}
+.q .t{font-size:12px;line-height:1.3}
+.q .m{font-family:var(--f-mono);font-size:9px;color:var(--ink-3);display:flex;gap:5px;align-items:center}
+.vcols{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.card{background:#fff;border:1px solid var(--edge);border-radius:10px;color:var(--ink);min-width:0}
+.card .ph{border-bottom-color:var(--hair);padding:9px 14px}
+.fr{display:grid;grid-template-columns:96px minmax(0,1fr) 140px;gap:12px;padding:9px 14px;border-bottom:1px solid #E7E3E3;align-items:start}
+.dif{font-size:11.5px;line-height:1.4;color:var(--ink-2);margin:4px 0 0;padding:4px 7px;background:#FAF8F8;border-radius:4px}
+.prov{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:4px;white-space:nowrap;justify-self:start}
+.prov.r{background:#F1EFEF;color:#4E494A}.prov.a{background:var(--ok-bg);color:var(--ok-ink)}.prov.d{background:var(--warn-bg);color:var(--warn-ink)}
+.ck{display:flex;gap:7px;align-items:flex-start;font-size:11.5px;line-height:1.35;padding:2px 0}
+.ck .y{color:#2F7A38;font-weight:700}.ck .w{color:#B06A00;font-weight:700}
+.sim{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:10px;padding:9px 14px;border-top:1px solid #E7E3E3;align-items:start}
+.sim.hot{background:var(--warn-bg)}
+.simn{width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;font-family:var(--f-mono);font-size:10px;display:flex;align-items:center;justify-content:center}
+.sb{font-weight:600;font-size:11.5px;border-radius:4px;min-height:30px;padding:0 9px;border:1px solid #C9C3C4;background:#fff;color:var(--ink);white-space:nowrap}
+.sb.same{background:var(--warn);border-color:var(--warn);color:#fff}
+.sb.diff{background:var(--ink);border-color:var(--ink);color:#fff}
+.status{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.04em;border-radius:999px;padding:3px 9px;white-space:nowrap;border:1px solid}
+.status.u{border-color:var(--warn);color:var(--warn-ink);background:var(--warn-bg)}
+.status.v{border-color:var(--ok);color:#fff;background:var(--ok)}
+.status.x{border-color:var(--red-ink);color:#fff;background:var(--red-ink)}
+
+/* overlays */
+.scrim{position:fixed;inset:0;background:rgba(21,3,5,.65);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:50;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.dialog{background:#fff;color:var(--ink);border-radius:12px;width:min(920px,100%);max-height:100%;overflow:auto}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#fff;color:var(--ink);border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;box-shadow:0 0 0 1px var(--ink),0 10px 30px rgba(0,0,0,.5);z-index:60;max-width:calc(100% - 32px)}
+.checking{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:60px 16px;color:#fff;text-align:center}
+.scan{width:240px;height:4px;border-radius:2px;background:var(--ct-line);overflow:hidden;position:relative}
+.scan i{position:absolute;inset:0;width:40%;background:var(--red);animation:scan 1.1s cubic-bezier(.4,0,.2,1) infinite}
+@keyframes scan{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
+@media (prefers-reduced-motion:reduce){.scan i{animation:none;width:100%}}
+
+@media (max-width:900px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+  .ar{display:none}
+  .c{border-radius:0}
+  .c1{border-top:1px solid var(--edge);border-radius:10px 10px 0 0}
+  .c3{border-bottom:2px solid var(--ink);border-radius:0 0 10px 10px;margin-bottom:12px}
+  .fr{grid-template-columns:minmax(0,1fr)}
+  .legend{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+</style>
+
+<div class="app" id="app"></div>
+
+<script>
+(function(){
+const SUBMIT_SRC = 14*60+52, POST = 14*60+47, SUBMIT_PRI = 14*60+24, SEEN = 14*60+18;
+const RATES = [[15,1.00,'0-15 MIN'],[30,0.75,'16-30 MIN'],[60,0.60,'31-60 MIN'],[120,0.25,'61-120 MIN'],[1440,0.10,'2-24 HR'],[2880,0.05,'24-48 HR']];
+const TRUST = 1.4, PRIMARY_BONUS = 1.5;
+
+const fresh = () => ({
+  flow:'source', screen:'s1', checking:false, toast:'', submittedFlow:'source',
+  src:{offset:'none', acc:{title:null, summary:null, time:null}},
+  pri:{offset:'yes', acc:{title:null, summary:null, location:null, time:null, privacy:null}},
+  ver:{queue:0, filter:'green', similar:{1:null,2:null,3:null}, privacy:false, blurred:false, status:'u', rejecting:false, reason:null, mapBig:false}
+});
+let S = fresh();
+let toastTimer = null;
+
+const hm = m => String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+const band = mins => RATES.find(r => mins <= r[0]) || RATES[RATES.length-1];
+const money = v => '£'+v.toFixed(2);
+
+/* icons */
+const I = {
+  pen:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  ai:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/></svg>',
+  doc:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="m9 15 2 2 4-4"/></svg>',
+  pin:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  shield:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>',
+  msg:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  eye:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
+  glass:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22"/><path d="M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></svg>',
+  cross:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>',
+  expand:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>',
+  plane:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2Z"/></svg>',
+  cam:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></svg>'
+};
+
+/* ---------- report content ---------- */
+const SRC = {
+  rawTitle:'Protesters block Mombasa Road at JKIA turn-off, Nairobi, Nairobi',
+  aiTitle:'Protesters block Mombasa Road at JKIA turn-off, Nairobi',
+  diffTitle:'Protesters block Mombasa Road at JKIA turn-off, Nairobi<del>, Nairobi</del>',
+  rawSummary:'Protesters have blocked both carriageways of Mombasa Road at the JKIA turn-off in Nairobi, burning tyres across the road. Traffic to and from the airport is at a standstill. Police have deployed to the scene.',
+  aiSummary:'About 200 protesters have blocked both carriageways of Mombasa Road at the JKIA turn-off in Nairobi in protest at the proposed fuel levy, burning tyres across the road. Traffic to and from the airport is at a standstill. Police have deployed to the scene and used tear gas.',
+  diffSummary:'<ins>About 200 p</ins><del>P</del>rotesters have blocked both carriageways of Mombasa Road at the JKIA turn-off in Nairobi<ins> in protest at the proposed fuel levy</ins>, burning tyres across the road. Traffic to and from the airport is at a standstill. Police have deployed to the scene<ins> and used tear gas</ins>.',
+  location:'Mombasa Road at JKIA turn-off, Nairobi, Kenya',
+  aiOffset:25
+};
+const SRC_OFFSETS = {source:{label:'Time stated in source',min:0,warn:'The source gives no time. Pick how long before the post it happened.'},live:{label:'Live / scanner · 2-5 min',min:3},repost:{label:'Repost / aggregator · 20+ min',min:20},none:{label:'No offset',min:0,warn:'No time in the source: 14:47 is when it was posted, not when it happened.'}};
+const PRI = {
+  rawTitle:'Protest Mombasa road',
+  aiTitle:'Protesters block Mombasa Road at JKIA turn-off, Nairobi',
+  diffTitle:'Protest<ins>ers block</ins> Mombasa <del>r</del><ins>R</ins>oad<ins> at JKIA turn-off, Nairobi</ins>',
+  rawSummary:'Lots of people blocking the road and burning tyres, already going when I got here. Police arriving now.',
+  aiSummary:'An estimated 150 to 250 protesters are blocking both carriageways of Mombasa Road at the JKIA turn-off in Nairobi and burning tyres. Police are arriving at the scene.',
+  diffSummary:'<del>Lots of people</del><ins>An estimated 150 to 250 protesters are</ins> blocking <ins>both carriageways of Mombasa Road at the JKIA turn-off in Nairobi</ins><del>the road</del> and burning tyres<del>, already going when I got here</del>. Police <ins>are</ins> arriving <ins>at the scene</ins><del> now</del>.',
+  rawLocation:'Mombasa Road, Nairobi',
+  aiLocation:'Mombasa Road at JKIA turn-off, Nairobi, Kenya',
+  diffLocation:'Mombasa Road<ins> at JKIA turn-off</ins>, Nairobi<ins>, Kenya</ins>',
+  aiOffset:10
+};
+const PRI_OFFSETS = {yes:{label:'Yes, saw it start · 0',min:0,warn:'You wrote "already going when I got here", so it started before 14:18.'},after:{label:'Arrived after it started · 10 min',min:10},unsure:{label:'Not sure',min:0,warn:'Not sure is fine. The AI will estimate from your photos.'}};
+
+/* derived values */
+function srcCalc(){
+  const o = SRC_OFFSETS[S.src.offset];
+  const rawInc = POST - o.min;
+  const aiInc = POST - SRC.aiOffset;
+  const t = S.src.acc.time;
+  const finalOffset = t===false ? o.min : SRC.aiOffset;
+  const finalInc = POST - finalOffset;
+  const b = band(SUBMIT_SRC - finalInc);
+  return {o, rawInc, aiInc, finalOffset, finalInc, band:b, pay:b[1]*TRUST, mins:SUBMIT_SRC-finalInc, timeChange: o.min!==SRC.aiOffset};
+}
+function priCalc(){
+  const o = PRI_OFFSETS[S.pri.offset];
+  const rawInc = SEEN - o.min;
+  const t = S.pri.acc.time;
+  const finalOffset = t===false ? o.min : PRI.aiOffset;
+  const finalInc = SEEN - finalOffset;
+  const b = band(SUBMIT_PRI - finalInc);
+  return {o, rawInc, finalOffset, finalInc, band:b, pay:b[1]*TRUST*PRIMARY_BONUS, mins:SUBMIT_PRI-finalInc, timeChange: o.min!==PRI.aiOffset};
+}
+function pending(flow){
+  const a = flow==='source' ? S.src.acc : S.pri.acc;
+  const c = flow==='source' ? srcCalc() : priCalc();
+  return Object.entries(a).filter(([k,v]) => v===null && !(k==='time' && !c.timeChange)).length;
+}
+function decided(flow,key){ return (flow==='source'?S.src.acc:S.pri.acc)[key]; }
+
+/* ---------- shared parts ---------- */
+function protoBar(){
+  const b = (id,label) => `<button class="pbtn ${S.flow===id && S.screen!=='ver' || (id==='ver' && S.screen==='ver') ? 'on':''}" data-act="jump" data-to="${id}">${label}</button>`;
+  return `<div class="proto gut"><div class="wrap"><b>Prototype</b>${b('source','Source report')}${b('primary','Primary report (L3+)')}${b('ver','Verifier')}<button class="pbtn" data-act="reset" style="margin-left:auto">Reset demo</button></div></div>`;
+}
+function header(){
+  const ver = S.screen==='ver';
+  return `<header class="top gut"><div class="wrap">
+    <div class="logo">crowd threat<i>◆</i></div>
+    <nav class="nav" aria-label="Main">${ver
+      ? '<span>Threat Map</span><span class="on">Verification Queue</span><span>Reporters</span>'
+      : '<span>Threat Map</span><span class="on">Report Threat</span><span>My Threats</span><span>Leaderboards</span>'}</nav>
+    ${ver ? `<span class="badge" style="display:flex;gap:6px;align-items:center;background:#fff;color:var(--ink);border-color:#fff">${I.shield} Stage 4 · Verifier</span>`
+      : `<div class="tabs" role="tablist" aria-label="Report type"><button role="tab" aria-selected="${S.flow==='source'}" class="${S.flow==='source'?'on':''}" data-act="flow" data-to="source">Source Report</button><button role="tab" aria-selected="${S.flow==='primary'}" class="${S.flow==='primary'?'on':''}" data-act="flow" data-to="primary">Primary Report <span class="mono" style="font-size:9px;color:var(--red-soft)">L3+</span></button></div>`}
+    <span class="badge">${ver?'[VERIFIER NAME]':'L4 · TRUST ×1.4'}</span>
+  </div></header>`;
+}
+function steps(){
+  if (S.screen==='ver') return '';
+  const s1 = S.screen==='s1';
+  const one = S.flow==='source' ? 'Write your report' : 'Report what you saw';
+  return `<div class="steps gut"><div class="wrap">
+    <button class="stp ${s1?'on':'done'}" data-act="go" data-to="s1"><span class="n">${s1?'1':'✓'}</span>${one}</button>
+    <span class="stp-line" style="${s1?'':'background:var(--red)'}"></span>
+    <button class="stp ${s1?'':'on'}" data-act="aicheck"><span class="n">2</span>AI check and final report</button>
+    <span class="stp-line"></span>
+    <button class="stp" data-act="submit"><span class="n">4</span>Verifier check</button>
+    ${s1 ? `<span class="note">${S.flow==='primary'?'First-hand: your media and your phone\'s location stand in for a source link.':'Fill in all five fields, then the AI checks them against your source.'}</span>`:''}
+  </div></div>`;
+}
+const box = (cls,icon,label,val,sub) => `<div class="tb ${cls}"><div class="tbh">${icon}${label}</div><div class="tbv">${val}</div><div class="tbs">${sub}</div></div>`;
+const sum = (a,b,c) => `<div class="eq">${a}<span class="op">−</span>${b}<span class="op">=</span>${c}</div>`;
+const accDen = (flow,key,accLabel) => {
+  const v = decided(flow,key);
+  return `<div class="ad"><button class="acc ${v===false?'off':''}" data-act="acc" data-flow="${flow}" data-key="${key}" aria-pressed="${v===true}">✓ ${v===true?'Accepted':(accLabel||'Accept')}</button><button class="den ${v===false?'on':''}" data-act="den" data-flow="${flow}" data-key="${key}" aria-pressed="${v===false}">✕ ${v===false?'Denied':'Deny'}</button></div>`;
+};
+const stateTag = (v) => v===false ? '<span class="kept">REPORTER TEXT KEPT · FLAGGED FOR VERIFIER</span>' : v===null ? '<span class="kept" style="color:var(--ink-3);background:#F1EFEF">SUGGESTION · NOT YET ACCEPTED</span>' : '';
+const dots = (list) => list.map(g => `<span class="dot ${g?'g':'a'}"></span>`).join('');
+
+function mapBase(h, extra){
+  return `<div class="map" role="img" aria-label="Map around Mombasa Road at the JKIA turn-off" style="height:${h}">
+    <div style="position:absolute;left:64%;top:5%;width:32%;height:30%;background:#DCE8D6;border-radius:8px"></div>
+    <div style="position:absolute;left:78%;top:11%;width:26px;height:26px;border-radius:50%;background:#fff;border:1px solid #9DB894;display:flex;align-items:center;justify-content:center;color:#3E6B36">${I.plane}</div>
+    <div class="lab" style="left:72%;top:27%">JKIA AIRPORT</div>
+    <div class="road" style="left:-10%;top:55%;width:120%;height:18px;transform:rotate(-14deg);background:#FFF6E6;border:1px solid #E8C98E"></div>
+    <div class="road" style="left:52%;top:-6%;width:11px;height:66%;background:#fff;border:1px solid #D9D0C8"></div>
+    <div class="road" style="left:8%;top:22%;width:42%;height:8px;transform:rotate(10deg);background:#fff;border:1px solid #D9D0C8"></div>
+    <div class="lab" style="left:4%;top:75%;transform:rotate(-14deg)">MOMBASA ROAD</div>
+    <div class="lab" style="left:54%;top:3%">AIRPORT N RD</div>
+    ${extra}
+  </div>`;
+}
+const pinMark = (big) => `
+  <div style="position:absolute;left:calc(49% - ${big?40:30}px);top:calc(55% - ${big?40:30}px);width:${big?80:60}px;height:${big?80:60}px;border-radius:50%;background:rgba(252,25,46,.12);border:1.5px dashed var(--red)"></div>
+  <div class="mk" style="left:calc(49% - 10px);top:calc(55% - 10px);width:20px;height:20px;background:var(--red);border:2.5px solid #fff;box-shadow:0 0 0 1px #C8000F,0 0 16px rgba(252,25,46,.55)"></div>`;
+
+/* ---------- STEP 1 ---------- */
+function step1(){
+  const src = S.flow==='source';
+  const c = src ? srcCalc() : priCalc();
+  const offs = src ? SRC_OFFSETS : PRI_OFFSETS;
+  const cur = src ? S.src.offset : S.pri.offset;
+  const flagged = !!c.o.warn;
+  const timeA = src ? box('',I.msg,'05a in source','<span style="color:#8C8284">none</span>','post 12:47 UK time') : box('',I.eye,'05a you saw it','14:18','first photo, from EXIF');
+  const timeB = box(flagged?'bad':'',I.glass,'05b offset?',flagged?`<span style="color:var(--red-ink)">⚠ ${c.o.min} min</span>`:`${c.o.min} min`, flagged?'<span style="color:var(--red-ink)">see question below</span>':offs[cur].label.split(' · ')[0]);
+  const timeC = box('',I.cross,'05c incident',hm(c.rawInc),'Nairobi, Kenya, Africa');
+  const q = src ? '05b How long before the post did it happen?' : '05b Did you see it start?';
+  const pills = Object.entries(offs).map(([k,o]) => `<button class="pill ${k===cur ? (o.warn&&k!=='unsure'?'bad':'on') : ''}" data-act="offset" data-to="${k}" aria-pressed="${k===cur}">${o.label}</button>`).join('');
+  const evidence = src ? '' : `<div class="row"><div class="rh"><span class="sn">00</span><h3 class="st">your evidence</h3><span class="lbl" style="margin-left:auto">PHOTO, VIDEO OR AUDIO</span></div>
+     <div style="display:flex;gap:8px;flex-wrap:wrap"><div class="thumb" role="img" aria-label="Photo of the blockade"><span class="t">IMG_2204.JPG</span></div><div class="thumb" role="img" aria-label="Video of the blockade"><span class="t">VID_2205 · 0:38</span></div><button class="thumb" style="background:#fff;border-style:dashed;color:#4E494A;font-size:12px" data-act="toast" data-msg="In the live build this opens your camera roll.">+ Add</button></div></div>`;
+  const mapExtra = src ? pinMark(true)+`<div class="mono" style="position:absolute;left:calc(49% + 20px);top:calc(55% + 14px);background:var(--ink);color:#fff;font-size:11px;padding:4px 8px;border-radius:4px">Drag to move the pin</div>`
+    : pinMark(true)+`<div style="position:absolute;left:calc(44% - 7px);top:calc(60% - 7px);width:14px;height:14px;border-radius:50%;background:var(--ink);border:2.5px solid #fff;box-shadow:0 0 0 1px var(--ink)"></div>
+       <div style="position:absolute;left:calc(55% - 12px);top:calc(49% - 12px);width:24px;height:24px;border-radius:5px;background:#fff;border:1.5px solid var(--ink);display:flex;align-items:center;justify-content:center;color:var(--ink)">${I.cam}</div>`;
+  const legend = src ? '' : `<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px">
+      <span class="lg"><span style="width:11px;height:11px;background:var(--red);transform:rotate(45deg)"></span>Your pin</span>
+      <span class="lg"><span style="width:11px;height:11px;border-radius:50%;background:var(--ink)"></span>Your phone now · 40 m</span>
+      <span class="lg">${I.cam}Photo taken here · 60 m</span></div>`;
+  return `<div class="s1">
+  <section class="panel" style="flex:1 1 600px" aria-label="Raw report">
+    <div class="ph"><span class="hi" style="background:#DDD8D8">${I.pen}</span><div><span class="hk">Stage 1${src?'':' · first-hand'}</span><h2 class="ht">raw report</h2></div></div>
+    ${src ? `<div class="row"><div class="rh"><span class="sn">00</span><h3 class="st">source</h3></div><input id="f-src" class="field mono" style="font-size:12px" value="https://x.com/[aggregator_account]/status/1848…"></div>` : evidence}
+    <div class="row"><div class="rh"><span class="sn">01</span><h3 class="st">title</h3></div><input id="f-title-${S.flow}" class="field" value="${src?SRC.rawTitle:PRI.rawTitle}"></div>
+    <div class="row"><div class="rh"><span class="sn">02</span><h3 class="st">category</h3></div><div style="display:flex;gap:6px"><span class="pill on">Social &amp; Political › Road Blockade</span><button class="pill" data-act="toast" data-msg="In the live build this opens the full category list.">Change</button></div></div>
+    <div class="row"><div class="rh"><span class="sn">03</span><h3 class="st">${src?'summary':'what you saw'}</h3></div><textarea id="f-sum-${S.flow}" class="field" style="height:${src?70:56}px;font-size:13px">${src?SRC.rawSummary:PRI.rawSummary}</textarea></div>
+    <div class="row"><div class="rh"><span class="sn">04</span><h3 class="st">location</h3><span class="lbl" style="margin-left:auto">SET ON THE MAP →</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><input id="f-loc-${S.flow}" class="field" style="flex:1 1 260px;width:auto" value="${src?SRC.location:PRI.rawLocation}"><span class="pill" style="align-self:center">${src?'-1.3326, 36.9120':'-1.3324, 36.9118'}</span></div></div>
+    <div class="row"><div class="rh"><span class="sn">05</span><h3 class="st">incident time</h3><span class="pill" style="margin-left:auto">NO PAYMENT WINDOWS</span></div>
+      ${sum(timeA,timeB,timeC)}
+      <span style="font-size:11.5px;font-weight:600">${q}</span>
+      <div style="display:flex;gap:4px;flex-wrap:wrap" role="group" aria-label="${q}">${pills}</div>
+      ${c.o.warn ? `<p class="warnr">⚠ ${c.o.warn}</p>` : `<p class="tx" style="color:var(--ok-ink)">✓ Offset applied: ${hm(src?POST:SEEN)} − ${c.o.min} min = ${hm(c.rawInc)}.</p>`}
+    </div>
+    <div class="pfoot"><span>AI checks all five fields${src?' against your source':', your media and your location'}. You accept or deny each suggestion before submitting.</span>
+      <button class="btn" data-act="toast" data-msg="Draft saved.">Save Draft</button>
+      <button class="btn pri" data-act="aicheck">${I.ai.replace('18','16').replace('18','16')}Submit for AI Check</button></div>
+  </section>
+  <section class="panel white" style="flex:1 1 440px;overflow:hidden" aria-label="Map the location">
+    <div class="ph"><span class="hi" style="background:var(--ink);color:#fff">${I.pin}</span><div><span class="hk">04 location</span><h2 class="ht">${src?'map the location':'where you are'}</h2></div>
+      ${src?'':'<button class="btn" style="margin-left:auto;min-height:34px;background:var(--ink);color:#fff;border-color:var(--ink)" data-act="toast" data-msg="Location from your phone: 40 m from your pin.">Use My Location</button>'}</div>
+    ${src ? '<div style="padding:10px 16px;border-bottom:1px solid var(--hair)"><input id="f-search" class="field" value="Mombasa Road, JKIA turn-off" aria-label="Search for a place"></div>':''}
+    <div style="position:relative;flex:1;min-height:360px;display:flex">${mapBase('100%',mapExtra).replace('style="height:100%"','style="height:auto;flex:1"')}
+      <div class="mapctl"><button aria-label="Zoom in" data-act="toast" data-msg="Zoom works in the live build.">+</button><button aria-label="Zoom out" data-act="toast" data-msg="Zoom works in the live build.">−</button></div></div>
+    <div style="padding:10px 16px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--hair)">
+      ${legend}
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="lbl">How exact is the pin?</span><span class="pill">◎ Exact point</span><span class="pill on">⌖ Street / junction</span><span class="pill">▢ Area</span><span class="pill">◯ City</span></div>
+      <div class="mono" style="font-size:11px;color:#4E494A">${src?'-1.3326, 36.9120':'-1.3324, 36.9118'} · NAIROBI, KENYA, AFRICA · ±150 M</div>
+    </div>
+  </section></div>`;
+}
+
+/* ---------- STEP 2 ---------- */
+function cells(raw, ai, fin, opts={}){
+  const cls = opts.last ? ' ft' : '';
+  return `<div class="c c1${cls}">${raw}</div><div class="ar" aria-hidden="true">→</div><div class="c c2${cls}">${ai}</div><div class="ar" aria-hidden="true">→</div><div class="c c3${cls}">${fin}</div>`;
+}
+const rh = (n,t,extra='') => `<div class="rh"><span class="sn">${n}</span><h3 class="st">${t}</h3>${extra}</div>`;
+const aiHead = (ok,label,flow,key,accLabel) => `<div class="rh"><span class="tag ${ok?'':'w'}"><span class="dot ${ok?'g':'a'}"></span>${label}</span>${key?accDen(flow,key,accLabel):''}</div>`;
+const finHead = t => `<div class="rh"><span class="fl">${t}</span></div>`;
+
+function step2(){
+  return S.flow==='source' ? step2src() : step2pri();
+}
+function stageHeaders(flow){
+  return `<div class="c c1 hd"><span class="hi" style="background:#DDD8D8">${I.pen}</span><div><span class="hk">Stage 1${flow==='primary'?' · first-hand':''}</span><h2 class="ht">raw report</h2></div><span class="hs">as typed</span></div>
+  <div class="ar" aria-hidden="true">→</div>
+  <div class="c c2 hd"><span class="hi" style="background:var(--red);color:#fff">${I.ai}</span><div><span class="hk">Stage 2</span><h2 class="ht">ai suggestions</h2></div><div class="ad"><button class="acc" data-act="all" data-flow="${flow}" data-v="1">✓ Accept All</button><button class="den" data-act="all" data-flow="${flow}" data-v="0">✕ Deny All</button></div></div>
+  <div class="ar" aria-hidden="true">→</div>
+  <div class="c c3 hd"><span class="hi" style="background:var(--ink);color:#fff">${I.doc}</span><div><span class="hk">Stage 3</span><h2 class="ht">final report</h2></div><span class="hs">to be submitted</span></div>`;
+}
+function step2src(){
+  const a = S.src.acc, c = srcCalc();
+  const tFinal = a.title===false ? SRC.rawTitle : SRC.aiTitle;
+  const sFinal = a.summary===false ? SRC.rawSummary : SRC.aiSummary;
+  const miniMap = `<div style="flex:0 0 120px;position:relative;border-radius:6px;border:1px solid #BDB6B7;overflow:hidden">${mapBase('100%','<div class="mk" style="left:calc(49% - 6px);top:calc(55% - 6px);width:12px;height:12px;background:var(--red);border:1.5px solid #fff"></div>')}
+    <button aria-label="Expand map" data-act="go" data-to="s1" style="position:absolute;right:4px;top:4px;width:26px;height:26px;border-radius:4px;background:#fff;border:1px solid #BDB6B7;color:var(--ink);display:flex;align-items:center;justify-content:center">${I.expand}</button></div>`;
+  const timeRaw = sum(box('',I.msg,'05a in source','<span style="color:#8C8284">none</span>','post 12:47 UK time'),
+    box(c.o.warn?'bad':'',I.glass,'05b offset',c.o.warn?`<span style="color:var(--red-ink)">⚠ ${c.o.min} min</span>`:`${c.o.min} min`, c.o.label.split(' · ')[0]),
+    box('',I.cross,'05c incident',hm(c.rawInc),'Nairobi, Kenya, Africa'));
+  const timeAi = c.timeChange ? sum(box('',I.msg,'05a in source','<span style="color:#8C8284">none</span> · <ins>14:47</ins>','12:47 UK = 14:47 Kenya'),
+    box('',I.glass,'05b offset',`<del>${c.o.min}</del> <ins>${SRC.aiOffset}</ins> min`,'repost, min 20'),
+    box('',I.cross,'05c incident',`<del>${hm(c.rawInc)}</del> <ins>${hm(c.aiInc)}</ins>`,'range 14:12 to 14:27'))
+    : sum(box('',I.msg,'05a in source','14:47','post time'),box('',I.glass,'05b offset',`${c.o.min} min`,'matches'),box('',I.cross,'05c incident',hm(c.rawInc),'no change'));
+  const timeFin = sum(box('soft',I.msg,'05a in source','14:47','post time'),box('soft',I.glass,'05b offset',`${c.finalOffset} min`,'aggregator'),box('res',I.cross,'05c incident',`<span style="font-size:15px">${hm(c.finalInc)}</span>`,'Nairobi, Kenya, Africa · ±10 min'));
+  return `<div class="grid">
+    ${stageHeaders('source')}
+    ${cells(rh('00','source')+'<input id="s2-src" class="field mono" style="font-size:11.5px" value="https://x.com/[aggregator_account]/status/1848…">',
+            aiHead(true,'no change')+'<p class="tx">Aggregator repost. Original found: NTV Kenya, 14:31.</p>',
+            finHead('source')+'<p class="fv mono" style="font-size:11.5px">X aggregator · original NTV Kenya</p>')}
+    ${cells(rh('01','title')+`<input id="s2-title" class="field" value="${SRC.rawTitle}">`,
+            aiHead(a.title!==null,'repeated place name','source','title')+`<p class="trk">${SRC.diffTitle}</p>`,
+            finHead('01 title')+`<p class="fv ${a.title===null?'pend':''}" style="font-family:var(--f-display);font-weight:500;font-size:15px">${tFinal}</p>${stateTag(a.title)}`)}
+    ${cells(rh('02','category')+'<div><span class="pill on">Social &amp; Political › Road Blockade</span></div>',
+            aiHead(true,'no change · matches source')+'<div><span class="pill on">Social &amp; Political › Road Blockade</span></div>',
+            finHead('02 category')+'<p class="fv">Social &amp; Political › Road Blockade</p>')}
+    ${cells(rh('03','summary')+`<textarea id="s2-sum" class="field" style="height:86px;font-size:12.5px">${SRC.rawSummary}</textarea>`,
+            aiHead(a.summary!==null,'2 details from source','source','summary')+`<p class="trk" style="font-size:12.5px">${SRC.diffSummary}</p>`,
+            finHead('03 summary')+`<p class="fv ${a.summary===null?'pend':''}" style="font-size:12.5px">${sFinal}</p>${stateTag(a.summary)}`)}
+    ${cells(`<div style="display:flex;gap:10px"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">${rh('04','location')}<input id="s2-loc" class="field" value="${SRC.location}"><div style="display:flex;gap:5px;flex-wrap:wrap"><span class="pill">-1.3326, 36.9120</span><span class="pill on">⌖ Street / junction</span></div></div>${miniMap}</div>`,
+            aiHead(true,'no change · junction matches video')+`<p class="trk">${SRC.location}</p>`,
+            finHead('04 location')+`<p class="fv">${SRC.location}</p><p class="fv mono" style="font-size:10.5px;color:#4E494A">⌖ STREET / JUNCTION · -1.3326, 36.9120</p>`)}
+    ${cells(rh('05','incident time','<span class="pill" style="margin-left:auto">NO PAYMENT WINDOWS</span>')+timeRaw+(c.o.warn?`<p class="warnr">⚠ ${c.o.warn}</p>`:''),
+            (c.timeChange ? aiHead(a.time!==null,'post time used as incident','source','time') : aiHead(true,'no change · offset correct'))+timeAi+'<p class="tx">Time zone from the location: Nairobi, Kenya, Africa (EAT, UTC+3). Repost with no stated time, so an offset is required.</p>',
+            finHead('05 incident time · 21 oct 2026')+timeFin+(c.timeChange?stateTag(a.time):''))}
+    ${cells(rh('06','privacy','<span class="lbl" style="margin-left:auto">NOT REPORTED · GDPR</span>')+'<p class="tx">Checked automatically for people who can be identified.</p>',
+            aiHead(false,'faces in source media')+'<p class="tx">No names or numbers in your text. The source video shows faces and a plate: the verifier will blur them before any media reaches clients.</p>',
+            finHead('06 privacy')+'<p class="fv">Text clear. Source media flagged for the verifier.</p>', {last:true})}
+  </div>`;
+}
+function step2pri(){
+  const a = S.pri.acc, c = priCalc();
+  const fin = (k,ai,raw) => a[k]===false ? raw : ai;
+  const blurred = a.privacy!==false;
+  const timeRaw = sum(box('',I.eye,'05a you saw it','14:18','first photo'),
+    box(c.o.warn&&S.pri.offset!=='unsure'?'bad':'',I.glass,'05b offset',c.o.warn&&S.pri.offset!=='unsure'?`<span style="color:var(--red-ink)">⚠ ${c.o.min} min</span>`:`${c.o.min} min`, c.o.label.split(' · ')[0]),
+    box('',I.cross,'05c incident',hm(c.rawInc),'Nairobi, Kenya, Africa'));
+  const timeAi = c.timeChange ? sum(box('',I.eye,'05a you saw it','14:18','EXIF ✓'),box('',I.glass,'05b offset',`<del>${c.o.min}</del> <ins>${PRI.aiOffset}</ins> min`,'tyres already lit'),box('',I.cross,'05c incident',`<del>${hm(c.rawInc)}</del> <ins>${hm(SEEN-PRI.aiOffset)}</ins>`,'range 14:00 to 14:15'))
+    : sum(box('',I.eye,'05a you saw it','14:18','EXIF ✓'),box('',I.glass,'05b offset',`${c.o.min} min`,'matches'),box('',I.cross,'05c incident',hm(c.rawInc),'no change'));
+  const timeFin = sum(box('soft',I.eye,'05a you saw it','14:18','first photo'),box('soft',I.glass,'05b offset',`${c.finalOffset} min`,'arrived after'),box('res',I.cross,'05c incident',`<span style="font-size:15px">${hm(c.finalInc)}</span>`,'Nairobi, Kenya, Africa · ±7 min'));
+  const th = (b) => `<div class="thumb sm" role="img" aria-label="Media${b?' with faces blurred':''}">${b?'<span class="bl" style="left:18px;top:10px"></span><span class="bl" style="left:38px;top:14px"></span>':''}<span class="t">IMG_2204</span></div><div class="thumb sm" role="img" aria-label="Video${b?' with faces and plate blurred':''}">${b?'<span class="bl" style="left:24px;top:12px"></span>':''}<span class="t">VID_2205</span></div>`;
+  return `<div class="grid">
+    ${stageHeaders('primary')}
+    ${cells(rh('00','your evidence')+`<div style="display:flex;gap:6px">${th(false)}</div>`,
+            aiHead(true,'media checked · 4 of 4 pass')+'<div class="ck"><span class="y" style="color:#2F7A38">✓</span><span class="tx">Taken 14:18 to 14:19 (EXIF), on this phone</span></div><div class="ck"><span style="color:#2F7A38">✓</span><span class="tx">Taken 60 m from your pin (EXIF GPS)</span></div><div class="ck"><span style="color:#2F7A38">✓</span><span class="tx">Phone now 40 m away · no earlier copies online</span></div>',
+            finHead('00 evidence')+`<div style="display:flex;gap:6px;align-items:center">${th(blurred)}<span class="mono" style="font-size:9.5px;color:#4E494A">${blurred?'BLURRED':'NOT BLURRED'}<br>PRIMARY SOURCE</span></div>`)}
+    ${cells(rh('01','title')+`<input id="p2-title" class="field" value="${PRI.rawTitle}">`,
+            aiHead(a.title!==null,'say what and where','primary','title')+`<p class="trk">${PRI.diffTitle}</p>`,
+            finHead('01 title')+`<p class="fv ${a.title===null?'pend':''}" style="font-family:var(--f-display);font-weight:500;font-size:15px">${fin('title',PRI.aiTitle,PRI.rawTitle)}</p>${stateTag(a.title)}`)}
+    ${cells(rh('02','category')+'<div><span class="pill on">Social &amp; Political › Road Blockade</span></div>',
+            aiHead(true,'no change · matches your media')+'<div><span class="pill on">Social &amp; Political › Road Blockade</span></div>',
+            finHead('02 category')+'<p class="fv">Social &amp; Political › Road Blockade</p>')}
+    ${cells(rh('03','what you saw')+`<textarea id="p2-sum" class="field" style="height:70px;font-size:12.5px">${PRI.rawSummary}</textarea>`,
+            aiHead(a.summary!==null,'structure · how many · where','primary','summary')+`<p class="trk" style="font-size:12.5px">${PRI.diffSummary}</p><p class="tx" style="font-size:11px">Crowd size estimated from your photo. Check it matches what you saw.</p>`,
+            finHead('03 summary')+`<p class="fv ${a.summary===null?'pend':''}" style="font-size:12.5px">${fin('summary',PRI.aiSummary,PRI.rawSummary)}</p>${stateTag(a.summary)}`)}
+    ${cells(rh('04','location')+`<input id="p2-loc" class="field" value="${PRI.rawLocation}"><div style="display:flex;gap:5px;flex-wrap:wrap"><span class="pill">-1.3324, 36.9118</span><span class="pill on">⌖ Street / junction</span></div>`,
+            aiHead(a.location!==null,'add junction · pin matches photo','primary','location')+`<p class="trk">${PRI.diffLocation}</p>`,
+            finHead('04 location')+`<p class="fv ${a.location===null?'pend':''}">${fin('location',PRI.aiLocation,PRI.rawLocation)}</p><p class="fv mono" style="font-size:10.5px;color:#4E494A">⌖ STREET / JUNCTION · PHOTO 60 M · PHONE 40 M</p>${stateTag(a.location)}`)}
+    ${cells(rh('05','incident time','<span class="pill" style="margin-left:auto">NO PAYMENT WINDOWS</span>')+timeRaw+(c.o.warn?`<p class="warnr">⚠ ${c.o.warn}</p>`:''),
+            (c.timeChange ? aiHead(a.time!==null,'arrived after it started','primary','time') : aiHead(true,'no change · offset fits your photos'))+timeAi+'<p class="tx">Burning tyres and a full crowd in your first photo suggest it started at least 10 min earlier.</p>',
+            finHead('05 incident time · 21 oct 2026')+timeFin+(c.timeChange?stateTag(a.time):''))}
+    ${cells(rh('06','privacy','<span class="lbl" style="margin-left:auto">NOT REPORTED · GDPR</span>')+'<p class="tx">Checked automatically for people who can be identified in your report and media.</p>',
+            aiHead(a.privacy!==null,'faces and a plate in your media','primary','privacy','Blur')+'<p class="tx">5 faces in IMG_2204 and VID_2205, 1 vehicle plate in VID_2205. No names or numbers in your text.</p>',
+            finHead('06 privacy')+`<p class="fv">${a.privacy===false?'Media not blurred. Flagged for the verifier.':'Faces and plate blurred before upload.'}</p>${a.privacy===null?stateTag(null):''}`, {last:true})}
+  </div>`;
+}
+function step2bar(){
+  const src = S.flow==='source';
+  const c = src ? srcCalc() : priCalc();
+  const p = pending(S.flow);
+  const a = src ? S.src.acc : S.pri.acc;
+  const greens = src ? [a.title!==false, true, a.summary!==false, true, !c.timeChange || a.time!==false] : [a.title!==false, true, a.summary!==false, a.location!==false, !c.timeChange || a.time!==false];
+  const g = greens.filter(Boolean).length;
+  return `<footer class="bar gut"><div class="wrap">
+    <p>Submitted at <span class="mono" style="color:#fff">${hm(src?SUBMIT_SRC:SUBMIT_PRI)} EAT</span>. ${p ? `<strong style="color:#fff">${p} suggestion${p>1?'s':''} to accept or deny.</strong>` : 'Denied suggestions keep your text and are flagged for the verifier.'}</p>
+    <div class="paybox">
+      <span style="display:flex;gap:4px;align-items:center" aria-label="${g} of 5 fields green"><span class="mono" style="font-size:10px;color:#4E494A;margin-right:2px">${g}/5</span>${dots(greens)}</span>
+      <span class="mono" style="font-size:10.5px;color:#4E494A">${c.mins} MIN · ${c.band[2]} · ${money(c.band[1])} × 1.4${src?'':' × PRIMARY 1.5 [TO CONFIRM]'}</span>
+      <span class="mono" style="font-size:20px">${money(c.pay)}</span>
+      <button class="btn" data-act="toast" data-msg="Draft saved.">Save Draft</button>
+      <button class="btn pri" data-act="submit" ${p?'disabled':''}>Submit Report</button>
+    </div></div></footer>`;
+}
+
+/* ---------- VERIFIER ---------- */
+function verData(){
+  const f = S.submittedFlow;
+  if (f==='primary'){
+    const a = S.pri.acc, c = priCalc();
+    const pv = k => a[k]===false ? ['d','✕ AI fix denied'] : ['a','✓ AI fix accepted'];
+    return {flow:f, id:'CT-2610-48207', sub:hm(SUBMIT_PRI), title:a.title===false?PRI.rawTitle:PRI.aiTitle, titleP:pv('title'), titleDif:PRI.diffTitle,
+      summary:a.summary===false?PRI.rawSummary:PRI.aiSummary, summaryP:pv('summary'), summaryDif:PRI.diffSummary,
+      location:a.location===false?PRI.rawLocation:PRI.aiLocation, locationP:pv('location'),
+      c, timeP: c.timeChange ? pv('time') : ['r','Reporter · AI agreed'], a05:'14:18', a05s:'seen, EXIF', b05:c.timeChange?`<del>${c.o.min}</del> <ins>${PRI.aiOffset}</ins> min`:`${c.o.min} min`,
+      c05:c.timeChange&&a.time!==false?`<del>${hm(c.rawInc)}</del> <ins>${hm(c.finalInc)}</ins>`:hm(c.finalInc),
+      timeNote: S.pri.offset==='yes' ? 'Reporter first said they saw it start, but wrote it was already going.' : 'First-hand report. Offset from the reporter\'s own account.',
+      privacy: a.privacy===false ? ['w','Reporter denied the blur: faces of 5 people and 1 plate visible in their media.'] : ['y','Reporter accepted the blur: faces and plate already blurred.'],
+      privFlag: a.privacy===false, source:['FIRST-HAND · PHOTO + VIDEO','EXIF 14:18 · 60 M FROM PIN','✓ NO EARLIER COPIES ONLINE'], reporter:'#2290', denied: Object.values(a).filter(v=>v===false).length, pay:c.pay, payLine:`${c.band[2]} · ${money(c.band[1])} × 1.4 × 1.5`};
+  }
+  const a = S.src.acc, c = srcCalc();
+  const pv = k => a[k]===false ? ['d','✕ AI fix denied'] : ['a','✓ AI fix accepted'];
+  return {flow:'source', id:'CT-2610-48211', sub:hm(SUBMIT_SRC), title:a.title===false?SRC.rawTitle:SRC.aiTitle, titleP:pv('title'), titleDif:'…Nairobi<del>, Nairobi</del>',
+    summary:a.summary===false?SRC.rawSummary:SRC.aiSummary, summaryP:pv('summary'), summaryDif:'Added from source: <ins>About 200</ins> · <ins>in protest at the proposed fuel levy</ins> · <ins>and used tear gas</ins>',
+    location:SRC.location, locationP:['r','Reporter · AI agreed'],
+    c, timeP: c.timeChange ? pv('time') : ['r','Reporter · AI agreed'], a05:'14:47', a05s:'post, none stated', b05:c.timeChange?`<del>${c.o.min}</del> <ins>${SRC.aiOffset}</ins> min`:`${c.o.min} min`,
+    c05:c.timeChange&&a.time!==false?`<del>${hm(c.rawInc)}</del> <ins>${hm(c.finalInc)}</ins>`:hm(c.finalInc),
+    timeNote: S.src.offset==='none' ? 'Reporter first chose "No offset" and was warned.' : 'Reporter applied an offset when filing.',
+    privacy: ['w','Source media: faces of 3 protesters and 1 vehicle plate in the repost video.'], privFlag:true,
+    source:['X · [AGGREGATOR] · 12:47 UK = 14:47 KENYA','ORIGINAL · NTV KENYA · 14:31 · "ALREADY BLOCKED"','✓ SOURCE NOT USED BY ANY OTHER REPORT'], reporter:'#4417', denied:Object.values(a).filter(v=>v===false).length, pay:c.pay, payLine:`${c.band[2]} · ${money(c.band[1])} × 1.4`};
+}
+function verifier(){
+  const d = verData(), v = S.ver;
+  const queue = [
+    ['Protesters block Mombasa Road at JKIA turn-off, Nairobi','g','5/5 · L4 · 2 MIN','◆ 3 SIMILAR NEARBY'],
+    ['Lorry drivers\' strike closes Tema port gate, Ghana','g','5/5 · L5 · 6 MIN',''],
+    ['Power substation fire cuts supply in Lahore suburbs','g','5/5 · L3 · 9 MIN',''],
+    ['Port workers walk out at Mombasa container terminal','g','5/5 · L6 · 11 MIN',''],
+    ['Armed robbery at fuel station, Durban North','a','4/5 · 1 FIX DENIED · L2',''],
+    ['Demonstration outside parliament, Bogotá','a','4/5 · L1 · NEW',''],
+    ['Mombasa Road blocked by protesters near airport','a','4/5 · L2 · 3 MIN','◆ SIMILAR NEARBY'],
+    ['Bridge closed after protest, Lima','r','3/5 · L1 · 14 MIN','']
+  ];
+  queue[0][0] = d.title.replace(', Nairobi, Nairobi',', Nairobi');
+  const left = v.status==='u' ? 38 : 37;
+  const statusPill = v.status==='u' ? '<span class="status u">UNVERIFIED · LIVE</span>' : v.status==='v' ? '<span class="status v">✓ VERIFIED</span>' : '<span class="status x">✕ REJECTED</span>';
+  const sim = [
+    {n:1,cls:'',title:'Mombasa Road blocked by protesters near airport',meta:'380 M · 14:30 (+8 MIN) · ROAD BLOCKADE · UNVERIFIED · L2',note:'LIKELY SAME · SENT 14:54, AFTER THIS ONE · CITIZEN TV',hot:true},
+    {n:2,cls:'hollow',title:'Heavy traffic on Mombasa Road towards the city centre',meta:'1.2 KM · 14:47 (+25 MIN) · TRAFFIC DISRUPTION · UNVERIFIED · L1',note:'POSSIBLY RELATED · KNOCK-ON EFFECT'},
+    {n:3,cls:'grey',title:'Police fire tear gas at protesters, Embakasi',meta:'1.8 KM · 14:37 (+15 MIN) · CIVIL UNREST · VERIFIED · L5',note:'POSSIBLY RELATED · SAME PROTEST, DIFFERENT SPOT?'}
+  ];
+  const simRows = sim.map(s => {
+    const st = v.similar[s.n];
+    const numStyle = s.n===1 ? 'background:var(--warn)' : s.n===2 ? 'background:#fff;color:var(--ink);border:1.5px solid #6E6466' : 'background:#6E6466';
+    return `<div class="sim ${s.hot && st!=='diff' ? 'hot':''}"><span class="simn" style="${numStyle}">${s.n}</span>
+      <div><div style="font-size:12.5px;line-height:1.3">${s.title}</div><div class="mono" style="font-size:9.5px;color:var(--ink-3);margin-top:3px">${s.meta}</div>
+      <div class="mono" style="font-size:9.5px;color:${st==='same'?'var(--warn-ink)':st==='diff'?'var(--ok-ink)':s.hot?'var(--warn-ink)':'#4E494A'};margin-top:2px">${st==='same'?'MARKED SAME INCIDENT · NOT PAID, LINKED TO THIS REPORT':st==='diff'?'MARKED DIFFERENT · STAYS IN QUEUE':s.note}</div></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><button class="sb ${st==='same'?'same':''}" data-act="sim" data-n="${s.n}" data-v="same" aria-pressed="${st==='same'}">Same Incident</button><button class="sb ${st==='diff'?'diff':''}" data-act="sim" data-n="${s.n}" data-v="diff" aria-pressed="${st==='diff'}">Different</button></div></div>`;
+  }).join('');
+  const mapExtra = (big) => `
+    <div style="position:absolute;left:calc(49% - ${big?220:150}px);top:calc(55% - ${big?220:150}px);width:${big?440:300}px;height:${big?440:300}px;border-radius:50%;border:1.5px dashed #8C8284;background:rgba(110,100,102,.04)"></div>
+    <div class="mono" style="position:absolute;left:calc(49% + ${big?110:70}px);top:calc(55% + ${big?180:118}px);font-size:9.5px;color:var(--ink-3)">2 KM</div>
+    <div style="position:absolute;left:49%;top:54.5%;width:17.5%;border-top:2px dashed var(--warn);transform:rotate(-8deg);transform-origin:left center;${v.similar[1]==='diff'?'opacity:.2':''}"></div>
+    <div class="mk" style="left:calc(66% - 9px);top:calc(51% - 9px);width:18px;height:18px;background:var(--warn);border:2px solid #fff;box-shadow:0 0 0 1px var(--warn-ink)"></div><span class="num" style="left:calc(66% + 7px);top:calc(51% - 22px)">1</span>
+    <div class="mk" style="left:calc(33% - 7px);top:calc(76% - 7px);width:14px;height:14px;background:#fff;border:2px solid #6E6466"></div><span class="num" style="left:calc(33% + 7px);top:calc(76% - 20px)">2</span>
+    <div class="mk" style="left:calc(63% - 7px);top:calc(26% - 7px);width:14px;height:14px;background:#6E6466;border:2px solid #fff"></div><span class="num" style="left:calc(63% + 7px);top:calc(26% - 20px)">3</span>
+    <div class="mk" style="left:10%;top:40%;width:10px;height:10px;background:#C9C3C4"></div>
+    ${pinMark(false)}
+    <div class="mono" style="position:absolute;left:calc(49% - 54px);top:calc(55% + 22px);background:var(--ink);color:#fff;font-size:10px;padding:3px 7px;border-radius:4px;white-space:nowrap">This report · ${hm(d.c.finalInc)}</div>`;
+  const legend = `<div class="legend" aria-label="Map key">
+    <div class="lg"><span class="lgi"><span style="width:12px;height:12px;background:var(--red);transform:rotate(45deg);border:1.5px solid #fff;box-shadow:0 0 0 1px #C8000F"></span></span>This report</div>
+    <div class="lg"><span class="lgi"><span style="width:12px;height:12px;background:var(--warn);transform:rotate(45deg);border:1.5px solid #fff;box-shadow:0 0 0 1px var(--warn-ink)"></span></span>Likely same</div>
+    <div class="lg"><span class="lgi"><span style="width:10px;height:10px;background:#fff;border:2px solid #6E6466;transform:rotate(45deg)"></span></span>Similar, unverified</div>
+    <div class="lg"><span class="lgi"><span style="width:11px;height:11px;background:#6E6466;transform:rotate(45deg)"></span></span>Similar, verified</div>
+    <div class="lg"><span class="lgi"><span style="width:9px;height:9px;background:#C9C3C4;transform:rotate(45deg)"></span></span>Outside window</div>
+    <div class="lg"><span class="lgi"><span style="width:16px;height:16px;border-radius:50%;border:1.5px dashed #8C8284"></span></span>2 km search</div></div>`;
+  const evid = d.flow==='primary' ? `<div style="display:flex;gap:6px;margin-top:6px"><div class="thumb sm">${(S.pri.acc.privacy!==false)?'<span class="bl" style="left:18px;top:10px"></span>':''}<span class="t">IMG_2204</span></div><div class="thumb sm">${(S.pri.acc.privacy!==false)?'<span class="bl" style="left:24px;top:12px"></span>':''}<span class="t">VID_2205</span></div></div>` : '';
+  const done = v.status!=='u';
+  return `<div style="display:flex;flex-direction:column;gap:10px">
+    <div class="stats">
+      <div class="stat"><span class="k">Left to verify</span><span class="v">${left}</span><span class="s"><span><span class="dot g"></span> ${v.status==='u'?21:20}</span><span><span class="dot a"></span> 12</span><span><span class="dot r"></span> 5</span></span></div>
+      <div class="stat"><span class="k">Oldest waiting</span><span class="v">14<span style="font-size:12px;color:var(--ct-muted)"> min</span></span><span class="s">AVG 6 MIN</span></div>
+      <div class="stat"><span class="k">Verified today</span><span class="v">${v.status==='v'?413:412}</span><span class="s">${v.status==='x'?27:26} REJECTED</span></div>
+      <div class="stat"><span class="k">Possible duplicates</span><span class="v" style="color:#F7C25A">4</span><span class="s">SAME PLACE AND TIME</span></div>
+      <div class="stat" style="flex:2 1 280px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span class="k">Active reporters by level · last hour</span><span class="mono" style="font-size:11px">47</span></div>
+        <div class="lvls" role="img" aria-label="Active reporters: level 1 18, level 2 11, level 3 8, level 4 6, level 5 3, level 6 1">
+          <div>18<i style="height:28px;background:#6E5557"></i></div><div>11<i style="height:17px;background:#8C5A5F"></i></div><div>8<i style="height:13px;background:#AB0010"></i></div><div>6<i style="height:10px;background:#D4101F"></i></div><div>3<i style="height:6px;background:var(--red)"></i></div><div>1<i style="height:3px;background:var(--red-soft)"></i></div></div>
+        <div style="display:flex;gap:6px">${['L1','L2','L3','L4','L5','L6'].map(l=>`<span class="mono" style="flex:1;text-align:center;font-size:9px;color:var(--ct-muted)">${l}</span>`).join('')}</div></div>
+    </div>
+    <div class="chips"><span class="mono" style="font-size:9.5px;letter-spacing:.12em;color:var(--ct-muted);margin-right:4px">QUEUE</span>
+      ${[['green','All-green first'],['region','My region'],['new','New reporters'],['dup','Possible duplicates · 4'],['old','Oldest first']].map(([k,l])=>`<button class="chip ${v.filter===k?'on':''}" data-act="filter" data-to="${k}" aria-pressed="${v.filter===k}">${l}</button>`).join('')}</div>
+    <div class="queue">${queue.map((q,i)=>`<button class="q ${i===0?'on':''}" data-act="queue" data-i="${i}"><span class="t">${q[0]}</span><span class="m"><span class="dot ${q[1]}"></span>${i===0&&done?(v.status==='v'?'VERIFIED':'REJECTED'):q[2]}</span>${q[3]?`<span class="m" style="color:var(--warn-ink)">${q[3]}</span>`:''}</button>`).join('')}</div>
+
+    <div class="vcols">
+      <div style="flex:1.25 1 560px;min-width:0;display:flex;flex-direction:column;gap:12px">
+        <section class="card" aria-label="Report under check">
+          <div class="ph" style="flex-wrap:wrap"><span class="hi" style="background:var(--ink);color:#fff">${I.doc}</span>
+            <div><span class="lbl" style="display:block">${d.flow==='primary'?'Primary report':'Submitted report'} · ${d.id} · ${d.sub} EAT</span><h2 class="ht" style="font-size:15px">${d.title}</h2></div>
+            <span style="margin-left:auto">${statusPill}</span></div>
+          <div class="fr" style="background:#FAF8F8;padding:6px 14px"><span class="lbl">Field</span><span class="lbl">Submitted value · what changed</span><span class="lbl">Who set it</span></div>
+          <div class="fr"><span class="lbl" style="padding-top:3px">01 Title</span><div><p class="fv" style="font-family:var(--f-display);font-weight:500">${d.title}</p><p class="dif">${d.titleP[0]==='d'?'AI suggested: '+d.titleDif:d.titleDif}</p></div><span class="prov ${d.titleP[0]}">${d.titleP[1]}</span></div>
+          <div class="fr"><span class="lbl" style="padding-top:3px">02 Category</span><p class="fv">Social &amp; Political › Road Blockade</p><span class="prov r">Reporter · AI agreed</span></div>
+          <div class="fr"><span class="lbl" style="padding-top:3px">03 Summary</span><div><p class="fv" style="font-size:12.5px">${d.summary}</p><p class="dif">${d.summaryP[0]==='d'?'AI suggested additions were denied by the reporter.':d.summaryDif}</p></div><span class="prov ${d.summaryP[0]}">${d.summaryP[1]}</span></div>
+          <div class="fr"><span class="lbl" style="padding-top:3px">04 Location</span><div><p class="fv">${d.location}</p><p class="fv mono" style="font-size:10.5px;color:#4E494A">⌖ STREET / JUNCTION · ±150 M</p></div><span class="prov ${d.locationP[0]}">${d.locationP[1]}</span></div>
+          <div class="fr"><span class="lbl" style="padding-top:3px">05 Incident time</span><div>
+            ${sum(box('soft',d.flow==='primary'?I.eye:I.msg,'05a '+(d.flow==='primary'?'seen':'in source'),d.a05,d.a05s),box('soft',I.glass,'05b offset',d.b05,d.flow==='primary'?'arrived after':'repost, min 20'),box('res',I.cross,'05c incident',d.c05,'Nairobi, Kenya, Africa'))}
+            <p class="dif">${d.timeNote} UTC+3.</p></div><span class="prov ${d.timeP[0]}">${d.timeP[1]}</span></div>
+          <div class="fr" style="border-bottom:0;background:#FFF8EC;box-shadow:inset 3px 0 0 var(--warn);border-radius:0 0 10px 10px"><span class="lbl" style="padding-top:3px;color:var(--warn-ink)">06 Privacy<br><span style="font-size:8.5px;color:var(--ink-3);letter-spacing:.06em">GDPR · NOT REPORTED</span></span>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div class="ck"><span class="y">✓</span><span>Report text: no names, numbers, addresses or plates of private individuals.</span></div>
+              <div class="ck"><span class="${v.blurred||d.privacy[0]==='y'?'y':'w'}">${v.blurred||d.privacy[0]==='y'?'✓':'◆'}</span><span>${v.blurred?'Faces and plate blurred by the verifier.':d.privacy[1]}</span></div>
+              <div class="ck"><span class="y">✓</span><span>Police and public figures only named in their official role.</span></div>
+              ${evid}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-start">${d.privFlag && !v.blurred ? '<span class="prov d">◆ AI flag · 1 issue</span><button class="sb" style="border-color:var(--warn);color:var(--warn-ink)" data-act="blur">Blur Media</button>' : '<span class="prov a">✓ Clear</span>'}</div></div>
+        </section>
+        <div style="display:flex;flex-wrap:wrap;gap:12px">
+          <section class="card" style="flex:1 1 240px"><div class="ph"><h2 class="ht" style="font-size:14px">source</h2></div><div style="padding:8px 14px 10px;display:flex;flex-direction:column;gap:6px">${d.source.map((s,i)=>`<div class="mono" style="font-size:10px;color:${i===2?'#2F7A38':'#4E494A'}">${s}</div>`).join('')}</div></section>
+          <section class="card" style="flex:1 1 240px"><div class="ph"><h2 class="ht" style="font-size:14px">checks</h2></div><div style="padding:6px 14px 8px">
+            <div class="ck"><span class="${d.denied?'w':'y'}">${d.denied?'◆':'✓'}</span><span>${d.denied?d.denied+' AI fix'+(d.denied>1?'es':'')+' denied by the reporter.':'AI fixes accepted. None denied.'}</span></div>
+            <div class="ck"><span class="y">✓</span><span>Own words. Category matches.</span></div>
+            <div class="ck"><span class="w">◆</span><span>3 similar threats within 2 km and ±2 h.</span></div></div></section>
+          <section class="card" style="flex:1 1 240px"><div class="ph"><h2 class="ht" style="font-size:14px">reporter ${d.reporter}</h2><span class="mono" style="margin-left:auto;font-size:10px;color:var(--ink-3)">L4 · ×1.4</span></div><div class="mono" style="padding:8px 14px 10px;font-size:10px;color:#4E494A;line-height:1.6">91% VERIFIED · 1,204 REPORTS<br><span style="color:var(--warn-ink)">TIME FIXED IN 3 OF LAST 10</span></div></section>
+        </div>
+      </div>
+      <div style="flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:12px">
+        <section class="card" style="overflow:hidden" aria-label="Map of this report and similar threats">
+          <div class="ph"><span class="hi" style="background:var(--ink);color:#fff">${I.pin}</span><h2 class="ht" style="font-size:14px">location and similar threats</h2><span class="mono" style="margin-left:auto;font-size:10px;color:var(--ink-3)">2 KM · ±2 H</span></div>
+          <div style="position:relative">${mapBase('340px',mapExtra(false))}<div class="mapctl" style="top:auto;bottom:10px"><button aria-label="Expand map" data-act="mapbig">${I.expand}</button></div></div>
+          ${legend}
+        </section>
+        <section class="card" aria-label="Similar threats">
+          <div class="ph"><h2 class="ht" style="font-size:14px">similar threats</h2><span class="mono" style="margin-left:auto;font-size:10px;color:var(--ink-3)">WITHIN 2 KM · ±2 H · DIFFERENT SOURCES</span></div>
+          ${simRows}
+          <p class="tx" style="padding:8px 14px 10px;border-top:1px solid #E7E3E3">The same source link can't be submitted twice, so matches are found by place and time. Only the first verified report of an incident is paid.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+  ${v.mapBig ? `<div class="scrim" data-act="mapclose"><div class="dialog" role="dialog" aria-label="Expanded map" data-stop="1"><div class="ph" style="border-bottom:1px solid var(--hair)"><h2 class="ht">location and similar threats</h2><button class="btn" style="margin-left:auto;min-height:34px" data-act="mapclose">Close</button></div>${mapBase('min(70vh,560px)',mapExtra(true))}${legend}</div></div>`:''}
+  ${v.rejecting ? `<div class="scrim" data-act="rejclose"><div class="dialog" role="dialog" aria-label="Reject with reason" data-stop="1" style="width:min(520px,100%)"><div class="ph" style="border-bottom:1px solid var(--hair)"><h2 class="ht">reject with reason</h2></div><div style="padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+      ${['Duplicate of an earlier report','Time not supported by the source','Location wrong or too vague','Summary missing key details from the source','Source not credible or not accessible','Personal data that can\'t be removed'].map((r,i)=>`<label style="display:flex;gap:10px;align-items:center;font-size:13px;padding:6px 0"><input type="radio" name="rej" id="rej-${i}" ${v.reason===i?'checked':''} data-act="reason" data-i="${i}">${r}</label>`).join('')}
+      <p class="tx">The reporter sees this reason on their dashboard.</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" data-act="rejclose">Cancel</button><button class="btn" style="background:var(--red-ink);border-color:var(--red-ink);color:#fff" data-act="rejconfirm" ${v.reason===null?'disabled':''}>Reject Report</button></div></div></div></div>`:''}`;
+}
+function verBar(){
+  const d = verData(), v = S.ver;
+  const done = v.status!=='u';
+  const needBlur = d.privFlag && !v.blurred;
+  return `<footer class="bar gut"><div class="wrap">
+    <span class="mono" style="font-size:11px;color:var(--ct-muted);flex:1 1 260px">${done ? (v.status==='v' ? `VERIFIED · <span style="color:#fff;font-size:15px">${money(d.pay)}</span> ADDED TO REPORTER WALLET` : 'REJECTED · REPORTER NOTIFIED WITH REASON') : `PAY ON VERIFY: ${d.payLine} = <span style="color:#fff;font-size:15px">${money(d.pay)}</span> · FIRST REPORT`}</span>
+    ${done ? `<button class="btn ghost" data-act="undo">Undo</button><button class="btn pri" data-act="toast" data-msg="Next report: Lorry drivers' strike closes Tema port gate, Ghana (example only).">Next Report</button>` :
+    `<button class="btn ghost" data-act="toast" data-msg="Edit opens each field for correction in the live build.">Edit</button>
+    <button class="btn ghost-red" data-act="reject">✕ Reject With Reason</button>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#fff;padding:0 10px;min-height:40px;border:1px solid ${v.privacy?'var(--ok)':'var(--warn)'};border-radius:4px;cursor:pointer"><input type="checkbox" id="privacy-ok" ${v.privacy?'checked':''} data-act="privacy" style="width:18px;height:18px;accent-color:var(--ok)">Privacy reviewed${needBlur?' <span class="mono" style="font-size:9.5px;color:#F7C25A">· MEDIA NOT BLURRED</span>':''}</label>
+    <button class="btn ok" style="min-width:140px" data-act="verify" ${v.privacy?'':'disabled'}>✓ Verify</button>`}
+  </div></footer>`;
+}
+
+/* ---------- render ---------- */
+function render(){
+  const app = document.getElementById('app');
+  const scrollEl = app.querySelector('main');
+  const keep = scrollEl ? scrollEl.scrollTop : 0;
+  let body, bar = '';
+  if (S.checking){
+    body = `<div class="checking"><div style="font-family:var(--f-display);font-size:22px">checking your report.</div><div class="scan"><i></i></div>
+      <div class="mono" style="font-size:11px;color:var(--ct-muted);line-height:1.8">${S.flow==='source'?'READING SOURCE · MATCHING TITLE AND SUMMARY · CHECKING TIME AND OFFSET · CHECKING PRIVACY':'READING EXIF · MATCHING GPS · REVERSE IMAGE SEARCH · CHECKING TIME · FINDING FACES AND PLATES'}</div></div>`;
+  } else if (S.screen==='s1') body = step1();
+  else if (S.screen==='s2'){ body = step2(); bar = step2bar(); }
+  else { body = verifier(); bar = verBar(); }
+  app.innerHTML = protoBar() + header() + steps() + `<main><div class="main-in gut"><div class="wrap">${body}</div></div></main>` + bar + (S.toast ? `<div class="toast" role="status">${S.toast}</div>` : '');
+  const m = app.querySelector('main'); if (m && !S.reset) m.scrollTop = keep; S.reset = false;
+}
+function toast(msg){ S.toast = msg; render(); clearTimeout(toastTimer); toastTimer = setTimeout(()=>{ S.toast=''; render(); }, 2600); }
+function go(screen){ S.screen = screen; S.reset = true; render(); }
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  const act = t.dataset.act;
+  if ((act==='mapclose' || act==='rejclose') && t.classList.contains('scrim') && e.target.closest('[data-stop]')) return;
+  switch(act){
+    case 'jump':
+      if (t.dataset.to==='ver'){ S.screen='ver'; }
+      else { S.flow=t.dataset.to; S.screen='s1'; }
+      S.reset=true; render(); break;
+    case 'reset': S = fresh(); S.reset=true; render(); break;
+    case 'flow': S.flow=t.dataset.to; go('s1'); break;
+    case 'go': go(t.dataset.to); break;
+    case 'aicheck':
+      if (S.screen==='s2') return;
+      S.checking=true; render();
+      setTimeout(()=>{ S.checking=false; go('s2'); }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : 1400); break;
+    case 'offset':
+      if (S.flow==='source') S.src.offset=t.dataset.to; else S.pri.offset=t.dataset.to;
+      render(); break;
+    case 'acc': case 'den': {
+      const acc = (t.dataset.flow==='source'?S.src:S.pri).acc;
+      acc[t.dataset.key] = act==='acc'; render(); break; }
+    case 'all': {
+      const acc = (t.dataset.flow==='source'?S.src:S.pri).acc;
+      Object.keys(acc).forEach(k => acc[k] = t.dataset.v==='1'); render(); break; }
+    case 'submit':
+      if (S.screen==='s1'){ toast('Run the AI check first.'); return; }
+      if (pending(S.flow)){ toast('Accept or deny every suggestion before submitting.'); return; }
+      S.submittedFlow = S.flow; S.ver = fresh().ver; S.screen='ver'; S.reset=true;
+      toast('Submitted. Your report is live as Unverified.'); break;
+    case 'toast': toast(t.dataset.msg); break;
+    case 'filter': S.ver.filter=t.dataset.to; render(); break;
+    case 'queue': if (t.dataset.i!=='0') toast('Example only: this prototype opens one report.'); break;
+    case 'sim': { const n=t.dataset.n, v=t.dataset.v; S.ver.similar[n] = S.ver.similar[n]===v ? null : v; render(); break; }
+    case 'blur': S.ver.blurred=true; toast('Faces and plate blurred.'); break;
+    case 'privacy': S.ver.privacy = !S.ver.privacy; render(); break;
+    case 'verify': if (!S.ver.privacy) return; S.ver.status='v'; toast('Verified. '+money(verData().pay)+' added to the reporter\'s wallet.'); break;
+    case 'reject': S.ver.rejecting=true; S.ver.reason=null; render(); break;
+    case 'reason': S.ver.reason=+t.dataset.i; render(); break;
+    case 'rejclose': S.ver.rejecting=false; render(); break;
+    case 'rejconfirm': S.ver.rejecting=false; S.ver.status='x'; toast('Rejected. The reporter can see the reason.'); break;
+    case 'undo': S.ver.status='u'; render(); break;
+    case 'mapbig': S.ver.mapBig=true; render(); break;
+    case 'mapclose': S.ver.mapBig=false; render(); break;
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape' && (S.ver.mapBig || S.ver.rejecting)){ S.ver.mapBig=false; S.ver.rejecting=false; render(); }
+});
+render();
+})();
+</script>
